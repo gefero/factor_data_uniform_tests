@@ -8,6 +8,106 @@ import colorspacious as cs
 
 st.set_page_config(page_title="Color Scale Perceptual Uniformity Analyzer", layout="wide")
 
+# Language dictionaries
+TRANSLATIONS = {
+    'en': {
+        'title': '🎨 Color Scale Perceptual Uniformity Analyzer',
+        'description': 'This tool analyzes color scales for perceptual uniformity using the CIE Lab or CAM02-UCS color space.\nA perceptually uniform color scale should have relatively constant ΔE values between consecutive colors.',
+        'settings': 'Settings',
+        'num_colors': 'Number of interpolated colors',
+        'color_space': 'Color Space',
+        'load_examples': '📚 Load Examples',
+        'load_viridis': 'Load Viridis (Uniform)',
+        'load_jet': 'Load Jet (Non-uniform)',
+        'add_palettes': 'Add Color Palettes',
+        'palette_name': 'Palette Name',
+        'palette_name_placeholder': 'My Custom Palette',
+        'colors_label': 'Enter at least 5 hex colors (one per line):',
+        'colors_placeholder': '#7bb5c4\n#9fc1ad\n#d3d3e0\n#8d9bff\n#ff9750\n#ffd900',
+        'colors_help': 'Enter hex colors, one per line (e.g., #FF0000)',
+        'add_palette_button': 'Add Palette',
+        'error_name': 'Please provide a palette name',
+        'error_invalid_color': 'Invalid hex color',
+        'error_min_colors': 'Please provide at least 5 valid hex colors',
+        'success_added': 'Added palette',
+        'current_palettes': 'Current Palettes',
+        'colors_count': 'colors',
+        'remove_button': '🗑️ Remove',
+        'analysis_title': '📊 Analysis',
+        'analyze_button': '🔬 Analyze All Palettes',
+        'stats_summary': 'Statistics Summary',
+        'palette_col': 'Palette',
+        'avg_delta': 'Average ΔE',
+        'std_dev': 'Std Deviation',
+        'min_delta': 'Min ΔE',
+        'max_delta': 'Max ΔE',
+        'uniformity_analysis': 'Perceptual Uniformity Analysis',
+        'color_space_label': 'Color Space',
+        'y_axis_range': 'Y-axis range',
+        'interpretation_title': '💡 Interpretation:',
+        'interpretation_1': '**Lower average ΔE** with **lower standard deviation** indicates better perceptual uniformity',
+        'interpretation_2': 'A flat line means the color transitions appear equally spaced to the human eye',
+        'interpretation_3': 'Peaks indicate regions where color changes appear more dramatic',
+        'interpretation_4': 'Valleys indicate regions where colors appear more similar',
+        'footer_1': 'Based on perceptual uniformity testing using CIE Lab and CAM02-UCS color spaces',
+        'footer_2': 'Lower standard deviation indicates better perceptual uniformity',
+        'add_first_palette': '👆 Add your first palette above or load an example from the sidebar!',
+        'language': 'Language',
+    },
+    'es': {
+        'title': '🎨 Analizador de Uniformidad Perceptual de Escalas de Color',
+        'description': 'Esta herramienta analiza escalas de color en términos de uniformidad perceptual usando el espacio de color CIE Lab o CAM02-UCS.\nUna escala de color perceptualmente uniforme debe tener valores ΔE relativamente constantes entre colores consecutivos.',
+        'settings': 'Configuración',
+        'num_colors': 'Número de colores interpolados',
+        'color_space': 'Espacio de Color',
+        'load_examples': '📚 Cargar Ejemplos',
+        'load_viridis': 'Cargar Viridis (Uniforme)',
+        'load_jet': 'Cargar Jet (No uniforme)',
+        'add_palettes': 'Agregar Paletas de Color',
+        'palette_name': 'Nombre de la Paleta',
+        'palette_name_placeholder': 'Mi Paleta Personalizada',
+        'colors_label': 'Ingrese al menos 5 colores hex (uno por línea):',
+        'colors_placeholder': '#7bb5c4\n#9fc1ad\n#d3d3e0\n#8d9bff\n#ff9750\n#ffd900',
+        'colors_help': 'Ingrese colores hex, uno por línea (ej., #FF0000)',
+        'add_palette_button': 'Agregar Paleta',
+        'error_name': 'Por favor proporcione un nombre para la paleta',
+        'error_invalid_color': 'Color hex inválido',
+        'error_min_colors': 'Por favor proporcione al menos 5 colores hex válidos',
+        'success_added': 'Paleta agregada',
+        'current_palettes': 'Paletas Actuales',
+        'colors_count': 'colores',
+        'remove_button': '🗑️ Eliminar',
+        'analysis_title': '📊 Análisis',
+        'analyze_button': '🔬 Analizar Todas las Paletas',
+        'stats_summary': 'Resumen Estadístico',
+        'palette_col': 'Paleta',
+        'avg_delta': 'ΔE Promedio',
+        'std_dev': 'Desviación Estándar',
+        'min_delta': 'ΔE Mínimo',
+        'max_delta': 'ΔE Máximo',
+        'uniformity_analysis': 'Análisis de Uniformidad Perceptual',
+        'color_space_label': 'Espacio de Color',
+        'y_axis_range': 'Rango del eje Y',
+        'interpretation_title': '💡 Interpretación:',
+        'interpretation_1': '**ΔE promedio más bajo** con **desviación estándar más baja** indica mejor uniformidad perceptual',
+        'interpretation_2': 'Una línea plana significa que las transiciones de color parecen igualmente espaciadas para el ojo humano',
+        'interpretation_3': 'Los picos indican regiones donde los cambios de color parecen más dramáticos',
+        'interpretation_4': 'Los valles indican regiones donde los colores parecen más similares',
+        'footer_1': 'Basado en pruebas de uniformidad perceptual usando espacios de color CIE Lab y CAM02-UCS',
+        'footer_2': 'Una desviación estándar más baja indica mejor uniformidad perceptual',
+        'add_first_palette': '👆 ¡Agregue su primera paleta arriba o cargue un ejemplo desde la barra lateral!',
+        'language': 'Idioma',
+    }
+}
+
+# Initialize session state for language
+if 'language' not in st.session_state:
+    st.session_state.language = 'en'
+
+def t(key):
+    """Translation helper function"""
+    return TRANSLATIONS[st.session_state.language].get(key, key)
+
 # Helper functions
 def interpolate_colors(hex_colors, n):
     """Interpolate colors given in HEX to n colors."""
@@ -116,11 +216,18 @@ if 'next_id' not in st.session_state:
     st.session_state.next_id = 1
 
 # Title and description
-st.title("🎨 Color Scale Perceptual Uniformity Analyzer")
-st.markdown("""
-This tool analyzes color scales for perceptual uniformity using the CIE Lab or CAM02-UCS color space.
-A perceptually uniform color scale should have relatively constant ΔE values between consecutive colors.
-""")
+col1, col2 = st.columns([3, 1])
+with col1:
+    st.title("🎨 Color Scale Perceptual Uniformity Analyzer")
+    st.markdown("""
+    This tool analyzes color scales for perceptual uniformity using the CIE Lab or CAM02-UCS color space.
+    A perceptually uniform color scale should have relatively constant ΔE values between consecutive colors.
+    """)
+with col2:
+    try:
+        st.image("logo.png", width=200)
+    except:
+        pass  # Logo not found, continue without it
 
 # Sidebar for settings
 st.sidebar.header("Settings")

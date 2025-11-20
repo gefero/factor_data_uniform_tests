@@ -215,14 +215,22 @@ if 'palettes' not in st.session_state:
 if 'next_id' not in st.session_state:
     st.session_state.next_id = 1
 
+# Language selector in sidebar
+st.sidebar.selectbox(
+    t('language'),
+    options=['English', 'Español'],
+    index=0 if st.session_state.language == 'en' else 1,
+    key='lang_selector',
+    on_change=lambda: setattr(st.session_state, 'language', 'en' if st.session_state.lang_selector == 'English' else 'es')
+)
+
+st.sidebar.markdown("---")
+
 # Title and description
 col1, col2 = st.columns([3, 1])
 with col1:
-    st.title("🎨 Color Scale Perceptual Uniformity Analyzer")
-    st.markdown("""
-    This tool analyzes color scales for perceptual uniformity using the CIE Lab or CAM02-UCS color space.
-    A perceptually uniform color scale should have relatively constant ΔE values between consecutive colors.
-    """)
+    st.title(t('title'))
+    st.markdown(t('description'))
 with col2:
     try:
         st.image("logo.png", width=200)
@@ -230,22 +238,22 @@ with col2:
         pass  # Logo not found, continue without it
 
 # Sidebar for settings
-st.sidebar.header("Settings")
-num_colors = st.sidebar.slider("Number of interpolated colors", 10, 500, 255, 5)
-color_space = st.sidebar.selectbox("Color Space", ["CIE Lab", "CAM02-UCS"])
+st.sidebar.header(t('settings'))
+num_colors = st.sidebar.slider(t('num_colors'), 10, 500, 255, 5)
+color_space = st.sidebar.selectbox(t('color_space'), ["CIE Lab", "CAM02-UCS"])
 
 # Examples section
-st.sidebar.header("📚 Load Examples")
+st.sidebar.header(t('load_examples'))
 col1, col2 = st.sidebar.columns(2)
 
-if col1.button("Load Viridis (Uniform)", use_container_width=True):
+if col1.button(t('load_viridis'), use_container_width=True):
     viridis_colors = ['#440154', '#482878', '#3e4989', '#31688e', '#26828e', 
                       '#1f9e89', '#35b779', '#6ece58', '#b5de2b', '#fde725']
     st.session_state.palettes[f"Viridis_{st.session_state.next_id}"] = viridis_colors
     st.session_state.next_id += 1
     st.rerun()
 
-if col2.button("Load Jet (Non-uniform)", use_container_width=True):
+if col2.button(t('load_jet'), use_container_width=True):
     jet_colors = ['#000080', '#0000ff', '#0080ff', '#00ffff', '#80ff80', 
                   '#ffff00', '#ff8000', '#ff0000', '#800000']
     st.session_state.palettes[f"Jet_{st.session_state.next_id}"] = jet_colors
@@ -253,25 +261,25 @@ if col2.button("Load Jet (Non-uniform)", use_container_width=True):
     st.rerun()
 
 # Main content
-st.header("Add Color Palettes")
+st.header(t('add_palettes'))
 
 # Form to add new palette
 with st.form("add_palette_form", clear_on_submit=True):
-    palette_name = st.text_input("Palette Name", placeholder="My Custom Palette")
+    palette_name = st.text_input(t('palette_name'), placeholder=t('palette_name_placeholder'))
     
-    st.write("Enter at least 5 hex colors (one per line):")
+    st.write(t('colors_label'))
     colors_input = st.text_area(
         "Colors (hex codes)",
         height=150,
-        placeholder="#7bb5c4\n#9fc1ad\n#d3d3e0\n#8d9bff\n#ff9750\n#ffd900",
-        help="Enter hex colors, one per line (e.g., #FF0000)"
+        placeholder=t('colors_placeholder'),
+        help=t('colors_help')
     )
     
-    submitted = st.form_submit_button("Add Palette", use_container_width=True)
+    submitted = st.form_submit_button(t('add_palette_button'), use_container_width=True)
     
     if submitted:
         if not palette_name:
-            st.error("Please provide a palette name")
+            st.error(t('error_name'))
         else:
             colors = [c.strip() for c in colors_input.split('\n') if c.strip()]
             
@@ -284,24 +292,24 @@ with st.form("add_palette_form", clear_on_submit=True):
                     mcolors.to_rgb(color)
                     valid_colors.append(color.upper())
                 except ValueError:
-                    st.error(f"Invalid hex color: {color}")
+                    st.error(f"{t('error_invalid_color')}: {color}")
                     valid_colors = []
                     break
             
             if len(valid_colors) < 5:
-                st.error("Please provide at least 5 valid hex colors")
+                st.error(t('error_min_colors'))
             elif valid_colors:
                 st.session_state.palettes[palette_name] = valid_colors
-                st.success(f"Added palette: {palette_name}")
+                st.success(f"{t('success_added')}: {palette_name}")
                 st.rerun()
 
 # Display current palettes
 if st.session_state.palettes:
-    st.header("Current Palettes")
+    st.header(t('current_palettes'))
     
     # Display palette cards
     for palette_name, colors in list(st.session_state.palettes.items()):
-        with st.expander(f"🎨 {palette_name} ({len(colors)} colors)", expanded=False):
+        with st.expander(f"🎨 {palette_name} ({len(colors)} {t('colors_count')})", expanded=False):
             col1, col2 = st.columns([4, 1])
             
             with col1:
@@ -312,17 +320,17 @@ if st.session_state.palettes:
                 plt.close()
                 
                 # Show colors
-                st.write("Colors:", ", ".join(colors))
+                st.write(f"{t('colors_count').capitalize()}:", ", ".join(colors))
             
             with col2:
-                if st.button("🗑️ Remove", key=f"remove_{palette_name}", use_container_width=True):
+                if st.button(t('remove_button'), key=f"remove_{palette_name}", use_container_width=True):
                     del st.session_state.palettes[palette_name]
                     st.rerun()
     
     # Analysis section
-    st.header("📊 Analysis")
+    st.header(t('analysis_title'))
     
-    if st.button("🔬 Analyze All Palettes", type="primary", use_container_width=True):
+    if st.button(t('analyze_button'), type="primary", use_container_width=True):
         with st.spinner("Analyzing palettes..."):
             # Analyze all palettes
             results = []
@@ -346,44 +354,44 @@ if st.session_state.palettes:
             y_max = max(3.0, max_delta_e * 1.1)  # At least 3, or 110% of max value
             
             # Display statistics
-            st.subheader("Statistics Summary")
+            st.subheader(t('stats_summary'))
             stats_data = []
             for name, result in zip(names, results):
                 stats_data.append({
-                    "Palette": name,
-                    "Average ΔE": f"{result['average_delta_e']:.4f}",
-                    "Std Deviation": f"{result['std_dev_delta_e']:.4f}",
-                    "Min ΔE": f"{min(result['delta_e_values']):.4f}",
-                    "Max ΔE": f"{max(result['delta_e_values']):.4f}"
+                    t('palette_col'): name,
+                    t('avg_delta'): f"{result['average_delta_e']:.4f}",
+                    t('std_dev'): f"{result['std_dev_delta_e']:.4f}",
+                    t('min_delta'): f"{min(result['delta_e_values']):.4f}",
+                    t('max_delta'): f"{max(result['delta_e_values']):.4f}"
                 })
             
             st.dataframe(pd.DataFrame(stats_data), use_container_width=True, hide_index=True)
             
             # Create and display plots
-            st.subheader("Perceptual Uniformity Analysis")
-            st.write(f"**Color Space:** {color_space} | **Y-axis range:** 0 to {y_max:.2f}")
+            st.subheader(t('uniformity_analysis'))
+            st.write(f"**{t('color_space_label')}:** {color_space} | **{t('y_axis_range')}:** 0 to {y_max:.2f}")
             
             fig = create_analysis_plot(results, names, y_max)
             st.pyplot(fig)
             plt.close()
             
             # Interpretation
-            st.info("""
-            **💡 Interpretation:**
-            - **Lower average ΔE** with **lower standard deviation** indicates better perceptual uniformity
-            - A flat line means the color transitions appear equally spaced to the human eye
-            - Peaks indicate regions where color changes appear more dramatic
-            - Valleys indicate regions where colors appear more similar
+            st.info(f"""
+            {t('interpretation_title')}
+            - {t('interpretation_1')}
+            - {t('interpretation_2')}
+            - {t('interpretation_3')}
+            - {t('interpretation_4')}
             """)
 
 else:
-    st.info("👆 Add your first palette above or load an example from the sidebar!")
+    st.info(t('add_first_palette'))
 
 # Footer
 st.markdown("---")
-st.markdown("""
+st.markdown(f"""
 <div style='text-align: center; color: gray; font-size: 0.9em;'>
-    <p>Based on perceptual uniformity testing using CIE Lab and CAM02-UCS color spaces</p>
-    <p>Lower standard deviation indicates better perceptual uniformity</p>
+    <p>{t('footer_1')}</p>
+    <p>{t('footer_2')}</p>
 </div>
 """, unsafe_allow_html=True)
