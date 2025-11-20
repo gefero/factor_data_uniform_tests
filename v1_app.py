@@ -254,12 +254,8 @@ if col1.button(t('load_viridis'), use_container_width=True):
     st.rerun()
 
 if col2.button(t('load_jet'), use_container_width=True):
-    # More samples from matplotlib's Jet colormap to better show perceptual non-uniformity
-    # Jet is notorious for having uneven perceptual steps, especially in the green-yellow region
-    jet_colors = ['#00007F', '#0000C7', '#0000FF', '#0047FF', '#008FFF', 
-                  '#00D7FF', '#00FFFF', '#2BFFD5', '#56FFAA', '#80FF80',
-                  '#AAFF56', '#D5FF2B', '#FFFF00', '#FFD700', '#FFAF00',
-                  '#FF8700', '#FF5F00', '#FF0000', '#C70000', '#7F0000']
+    jet_colors = ['#000080', '#0000ff', '#0080ff', '#00ffff', '#80ff80', 
+                  '#ffff00', '#ff8000', '#ff0000', '#800000']
     st.session_state.palettes[f"Jet_{st.session_state.next_id}"] = jet_colors
     st.session_state.next_id += 1
     st.rerun()
