@@ -237,7 +237,7 @@ with col1:
     st.markdown(t('description'))
     st.markdown("---")
     st.markdown(t('intro_text'))
-    st.markdown(f"**{t('created_by')}:** [Gerónimo Ferre](https://gefero.github.io)")
+    st.markdown(f"**{t('created_by')}:** [Germán Rosati](https://gefero.github.io)")
 with col2:
     try:
         st.image("logo.png", width=200)
