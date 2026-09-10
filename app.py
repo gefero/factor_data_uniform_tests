@@ -160,7 +160,10 @@ def hex_to_rgb(hex_color):
     """Convert hex color to RGB (0-1 range)."""
     return mcolors.to_rgb(hex_color)
 
-_HEX_RE = re.compile(r'#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b')
+# 6-digit codes are accepted even when glued to following text (e.g. "#2D142CMagenta"),
+# since 6 consecutive hex digits rarely occur by accident. The 3-digit short form
+# requires a trailing word boundary so prose like "#define" is not misread.
+_HEX_RE = re.compile(r'#(?:([0-9a-fA-F]{6})|([0-9a-fA-F]{3})\b)')
 
 def extract_hex_colors(text):
     """Extract hex color codes from arbitrary pasted text (a table, a list, JSON, etc.).
@@ -169,10 +172,9 @@ def extract_hex_colors(text):
     numeric table cells. Short form (#abc) is expanded to #aabbcc.
     """
     colors = []
-    for match in _HEX_RE.findall(text or ''):
-        if len(match) == 3:
-            match = ''.join(c * 2 for c in match)
-        colors.append('#' + match.upper())
+    for six, three in _HEX_RE.findall(text or ''):
+        code = six or ''.join(c * 2 for c in three)
+        colors.append('#' + code.upper())
     return colors
 
 def _srgb_to_linear(c):
