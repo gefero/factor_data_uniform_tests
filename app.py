@@ -37,9 +37,13 @@ TRANSLATIONS = {
         'colors_textarea_label': 'Colors (hex codes)',
         'colors_placeholder': '#7bb5c4\n#9fc1ad\n#d3d3e0\n#8d9bff\n#ff9750\n#ffd900',
         'colors_help': 'You can paste a table or free text; hex codes (#RGB or #RRGGBB) are detected automatically.',
-        'or_upload_image': 'Or upload an image of a color scale:',
-        'upload_image': 'Color scale image',
-        'upload_image_help': 'The central strip of the image is sampled to extract the scale.',
+        'or_upload_image': 'Or upload an image (a color scale, a photo, artwork...):',
+        'upload_image': 'Image',
+        'upload_image_help': 'From a gradient strip the scale is read in order; from any other image the dominant colors are extracted.',
+        'image_mode': 'Image type',
+        'image_mode_gradient': 'Color scale / gradient',
+        'image_mode_palette': 'Photo or any image (dominant colors)',
+        'n_extract': 'Colors to extract',
         'add_palette_button': 'Add Scale',
         'error_name': 'Please provide a scale name',
         'error_invalid_color': 'Invalid hex color',
@@ -97,9 +101,13 @@ TRANSLATIONS = {
         'colors_textarea_label': 'Colores (códigos hex)',
         'colors_placeholder': '#7bb5c4\n#9fc1ad\n#d3d3e0\n#8d9bff\n#ff9750\n#ffd900',
         'colors_help': 'Podés pegar una tabla o texto libre; los códigos hex (#RGB o #RRGGBB) se detectan automáticamente.',
-        'or_upload_image': 'O bien, subí una imagen de una escala de color:',
-        'upload_image': 'Imagen de la escala de color',
-        'upload_image_help': 'Se muestrea la franja central de la imagen para extraer la escala.',
+        'or_upload_image': 'O bien, subí una imagen (una escala de color, una foto, una ilustración...):',
+        'upload_image': 'Imagen',
+        'upload_image_help': 'Si es un degradado, la escala se lee en orden; si es cualquier otra imagen, se extraen los colores dominantes.',
+        'image_mode': 'Tipo de imagen',
+        'image_mode_gradient': 'Escala de color / degradado',
+        'image_mode_palette': 'Foto o cualquier imagen (colores dominantes)',
+        'n_extract': 'Colores a extraer',
         'add_palette_button': 'Agregar Escala',
         'error_name': 'Por favor proporcione un nombre para la escala',
         'error_invalid_color': 'Color hex inválido',
@@ -194,14 +202,42 @@ def srgb_to_oklab(rgb):
         0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_,
     ])
 
+def _open_image_rgb(file):
+    """Open an uploaded image, flattening any transparency onto white."""
+    img = Image.open(file)
+    if img.mode in ("RGBA", "LA", "P"):
+        img = img.convert("RGBA")
+        background = Image.new("RGBA", img.size, (255, 255, 255, 255))
+        img = Image.alpha_composite(background, img)
+    return img.convert("RGB")
+
 def extract_scale_from_image(file, n_samples=16):
-    """Extract a color scale from an uploaded image by sampling its central strip."""
-    img = Image.open(file).convert("RGB")
-    arr = np.asarray(img)
+    """Extract an *ordered* color scale from a gradient image by sampling its central strip.
+
+    Keeps the original left-to-right (or top-to-bottom) order, so it works for
+    non-monotonic scales (rainbow, diverging, ...).
+    """
+    arr = np.asarray(_open_image_rgb(file))
     height, width, _ = arr.shape
     line = arr[height // 2, :, :] if width >= height else arr[:, width // 2, :]
     idx = np.linspace(0, len(line) - 1, n_samples).round().astype(int)
     return [mcolors.to_hex(line[i] / 255.0).upper() for i in idx]
+
+def extract_palette_from_image(file, n_colors=8):
+    """Extract the dominant colors from *any* image (a photo, a landscape, artwork...).
+
+    Uses median-cut quantization, then orders the resulting colors by perceptual
+    lightness (CIE Lab L*) so they form a usable scale.
+    """
+    img = _open_image_rgb(file)
+    img.thumbnail((400, 400))  # downscale for speed
+    quantized = img.quantize(colors=max(2, n_colors), method=Image.Quantize.MEDIANCUT)
+    palette = quantized.getpalette()
+    # getcolors() -> [(pixel_count, palette_index), ...]; keep the most frequent ones
+    counts = sorted(quantized.getcolors() or [], reverse=True)[:n_colors]
+    rgb = [tuple(palette[idx * 3: idx * 3 + 3]) for _, idx in counts]
+    rgb.sort(key=lambda c: cs.cspace_convert(np.array(c) / 255.0, "sRGB1", "CIELab")[0])
+    return [mcolors.to_hex(np.array(c) / 255.0).upper() for c in rgb]
 
 def perceptual_uniformity_test(hex_colors, color_space="CIE Lab"):
     """
@@ -468,6 +504,13 @@ with st.form("add_palette_form", clear_on_submit=True):
         type=["png", "jpg", "jpeg", "webp", "bmp"],
         help=t('upload_image_help'),
     )
+    image_mode = st.radio(
+        t('image_mode'),
+        options=['gradient', 'palette'],
+        format_func=lambda m: t('image_mode_gradient') if m == 'gradient' else t('image_mode_palette'),
+        horizontal=True,
+    )
+    n_extract = st.slider(t('n_extract'), 5, 20, 8)
 
     submitted = st.form_submit_button(t('add_palette_button'), use_container_width=True)
 
@@ -476,7 +519,10 @@ with st.form("add_palette_form", clear_on_submit=True):
             st.error(t('error_name'))
         elif image_file is not None:
             try:
-                colors = extract_scale_from_image(image_file)
+                if image_mode == 'gradient':
+                    colors = extract_scale_from_image(image_file, n_samples=max(n_extract, 16))
+                else:
+                    colors = extract_palette_from_image(image_file, n_colors=n_extract)
             except Exception:
                 colors = []
                 st.error(t('error_image'))
